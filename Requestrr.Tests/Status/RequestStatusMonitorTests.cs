@@ -154,6 +154,19 @@ namespace Requestrr.Tests.Status
             Assert.Contains("S02E04", Assert.Single(_sender.Sent).Message);
         }
 
+        [Fact]
+        public async Task RunOnce_SeasonAndFutureSeasonsSameSeason_SendsOnce()
+        {
+            _tvSubscriptions[81189] = new TvShowNotification[] { new SeasonNotification("u1", 81189, 2), new FutureSeasonsNotification("u1", 81189, 2) };
+            _status.Start(RequestStatusKeys.TvSeason("u1", 81189, 2), Now.AddHours(-30));
+            _tv.Result = new ArrItemStatus { Title = "Severance", Units = new[] { new StatusUnit { Key = "e1", Label = "S02E04" } } };
+
+            await CreateMonitor().RunOnceAsync(CancellationToken.None);
+
+            Assert.Single(_sender.Sent);
+            Assert.Equal(1, _status.Get(RequestStatusKeys.TvSeason("u1", 81189, 2)).Units["e1|NoRelease"].NotifiedCount);
+        }
+
         private class FakeMovieProvider : IMovieStatusProvider
         {
             public ArrItemStatus Result { get; set; }

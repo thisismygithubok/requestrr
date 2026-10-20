@@ -9,7 +9,6 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
 {
     public class RadarrClient : IMovieRequester, IMovieSearcher, IMovieStatusProvider
     {
-        private static bool _statusUnsupportedLogged;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<RadarrClient> _logger;
         private readonly RadarrSettingsProvider _settingsProvider;
@@ -96,17 +95,8 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
 
         public Task<ArrItemStatus> GetMovieStatusAsync(int theMovieDbId, System.Threading.CancellationToken token)
         {
-            var provider = CreateInstance<IMovieStatusProvider>();
-            if (provider != null)
-                return provider.GetMovieStatusAsync(theMovieDbId, token);
-
-            if (!_statusUnsupportedLogged)
-            {
-                _statusUnsupportedLogged = true;
-                _logger.LogWarning("Request status notifications are not supported for Radarr V2, skipping.");
-            }
-
-            return Task.FromResult<ArrItemStatus>(null);
+            // Radarr V2 has no status provider, so status alerts are skipped for it.
+            return CreateInstance<IMovieStatusProvider>()?.GetMovieStatusAsync(theMovieDbId, token) ?? Task.FromResult<ArrItemStatus>(null);
         }
 
         private T CreateInstance<T>() where T : class

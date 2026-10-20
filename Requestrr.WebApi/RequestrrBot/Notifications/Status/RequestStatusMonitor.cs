@@ -98,7 +98,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
                     foreach (var season in tvShow.Value.GroupBy(x => x.SeasonNumber))
                     {
                         await ProcessItemAsync(() => _tvShowProvider.GetSeasonStatusAsync(tvShow.Key, season.Key, token),
-                            season.Select(x => (x.UserId, RequestStatusKeys.TvSeason(x.UserId, tvShow.Key, season.Key))), $"tv show {tvShow.Key} season {season.Key}", token);
+                            season.Select(x => (x.UserId, RequestStatusKeys.TvSeason(x.UserId, tvShow.Key, season.Key))).Distinct(), $"tv show {tvShow.Key} season {season.Key}", token);
                     }
                 }
             }

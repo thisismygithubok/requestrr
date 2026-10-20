@@ -12,11 +12,17 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
 
         private object _lock = new object();
         private readonly RequestStatusRepository _statusRepository;
+        private readonly Action<Dictionary<string, TvShowNotification[]>> _write;
 
-        public TvShowNotificationsRepository(RequestStatusRepository statusRepository)
+        public TvShowNotificationsRepository(RequestStatusRepository statusRepository, Action<Dictionary<string, TvShowNotification[]>> write)
         {
             _statusRepository = statusRepository;
+            _write = write;
+        }
 
+        public TvShowNotificationsRepository(RequestStatusRepository statusRepository)
+            : this(statusRepository, NotificationsFile.WriteTvShows)
+        {
             foreach (var userNotif in NotificationsFile.Read().TvShows)
             {
                 foreach (var tvNotif in userNotif.Notifications)
@@ -101,7 +107,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
 
         private void WriteTvShowsNotifications()
         {
-            NotificationsFile.WriteTvShows(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n).ToArray()));
+            _write(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n).ToArray()));
         }
     }
 }

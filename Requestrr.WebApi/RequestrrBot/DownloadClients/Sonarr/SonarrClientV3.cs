@@ -462,29 +462,9 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
             }
         }
 
-        public async Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
+        public Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
         {
-            var response = await HttpGetAsync($"{BaseURL}/series?tvdbId={theTvDbId}");
-            await response.ThrowIfNotSuccessfulAsync("SonarrGetSeriesByTvDbId failed", x => x.error);
-
-            var series = JArray.Parse(await response.Content.ReadAsStringAsync()).FirstOrDefault();
-            if (series == null)
-                return null;
-
-            var seriesId = (int)series["id"];
-
-            var episodesResponse = await HttpGetAsync($"{BaseURL}/episode?seriesId={seriesId}");
-            await episodesResponse.ThrowIfNotSuccessfulAsync("SonarrGetSeriesEpisode failed", x => x.error);
-
-            var queueResponse = await HttpGetAsync($"{BaseURL}/queue/details?seriesId={seriesId}");
-            await queueResponse.ThrowIfNotSuccessfulAsync("SonarrGetQueue failed", x => x.error);
-
-            return ArrStatusMapping.MapSeason(
-                (string)series["title"],
-                JArray.Parse(await episodesResponse.Content.ReadAsStringAsync()),
-                seasonNumber,
-                ArrQueueParser.Parse(await queueResponse.Content.ReadAsStringAsync()),
-                DateTime.UtcNow);
+            return SonarrClient.FetchSeasonStatusAsync(HttpGetAsync, BaseURL, theTvDbId, seasonNumber);
         }
 
         private async Task<JSONTvShow> FindSeriesInSonarrAsync(int tvDbId)
