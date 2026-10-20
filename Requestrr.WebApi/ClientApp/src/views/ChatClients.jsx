@@ -71,6 +71,7 @@ function ChatClients(props) {
   const [automaticallyNotifyRequesters, setAutomaticallyNotifyRequesters] = useState(true);
   const [notificationMode, setNotificationMode] = useState("PrivateMessages");
   const [notificationChannels, setNotificationChannels] = useState([]);
+  const [statusNotifications, setStatusNotifications] = useState({ enabled: false, noReleaseHours: 24, downloadingHours: 12, stuckHours: 1, renotifyEnabled: false, renotifyIntervalHours: 24, renotifyMaxCount: 3 });
   const [automaticallyPurgeCommandMessages, setAutomaticallyPurgeCommandMessages] = useState(true);
   const [language, setLanguage] = useState("english");
   const [availableLanguages, setAvailableLanguages] = useState([]);
@@ -94,6 +95,7 @@ function ChatClients(props) {
         setAutomaticallyNotifyRequesters(data.payload.automaticallyNotifyRequesters);
         setNotificationMode(data.payload.notificationMode);
         setNotificationChannels(data.payload.notificationChannels);
+        setStatusNotifications(data.payload.statusNotifications);
         setAutomaticallyPurgeCommandMessages(data.payload.automaticallyPurgeCommandMessages);
         setLanguage(data.payload.language);
         setAvailableLanguages(data.payload.availableLanguages);
@@ -142,6 +144,10 @@ function ChatClients(props) {
 
   const triggerChatClientValidation = () => {
     setChatClientInvalid(!validateChatClient());
+  };
+
+  const updateStatusNotifications = (changes) => {
+    setStatusNotifications({ ...statusNotifications, ...changes });
   };
 
   const onStatusMessageChange = (event) => {
@@ -196,6 +202,7 @@ function ChatClients(props) {
           automaticallyNotifyRequesters: automaticallyNotifyRequesters,
           notificationMode: notificationMode,
           notificationChannels: notificationChannels,
+          statusNotifications: statusNotifications,
           automaticallyPurgeCommandMessages: automaticallyPurgeCommandMessages,
           language: language,
         }))
@@ -537,6 +544,128 @@ function ChatClients(props) {
                               </FormGroup>
                             </Col>
                           </Row>
+                          <Row>
+                            <Col md="12">
+                              <FormGroup className="custom-control custom-control-alternative custom-checkbox mb-3">
+                                <Input
+                                  className="custom-control-input"
+                                  id="statusNotificationsEnabled"
+                                  type="checkbox"
+                                  onChange={e => updateStatusNotifications({ enabled: !statusNotifications.enabled })}
+                                  checked={statusNotifications.enabled}
+                                />
+                                <label
+                                  className="custom-control-label"
+                                  htmlFor="statusNotificationsEnabled"
+                                >
+                                  <span className="text-muted">Notify requesters when a request is stalled (no release found, downloading for too long or stuck in the download queue)</span>
+                                </label>
+                              </FormGroup>
+                            </Col>
+                          </Row>
+                          {
+                            statusNotifications.enabled
+                              ? <>
+                                <Row>
+                                  <Col md="12">
+                                    <p className="text-muted small">Status alerts only apply to media handled by Radarr, Sonarr or Lidarr (not Overseerr or Ombi).</p>
+                                  </Col>
+                                </Row>
+                                <Row>
+                                <Col lg="4">
+                                  <FormGroup>
+                                    <label className="form-control-label" htmlFor="input-noReleaseHours">No release found after (hours)</label>
+                                    <Input
+                                      value={statusNotifications.noReleaseHours}
+                                      onChange={e => updateStatusNotifications({ noReleaseHours: parseInt(e.target.value) || 0 })}
+                                      className="form-control-alternative"
+                                      id="input-noReleaseHours"
+                                      type="number"
+                                      min="1"
+                                    />
+                                  </FormGroup>
+                                </Col>
+                                <Col lg="4">
+                                  <FormGroup>
+                                    <label className="form-control-label" htmlFor="input-downloadingHours">Downloading longer than (hours)</label>
+                                    <Input
+                                      value={statusNotifications.downloadingHours}
+                                      onChange={e => updateStatusNotifications({ downloadingHours: parseInt(e.target.value) || 0 })}
+                                      className="form-control-alternative"
+                                      id="input-downloadingHours"
+                                      type="number"
+                                      min="1"
+                                    />
+                                  </FormGroup>
+                                </Col>
+                                <Col lg="4">
+                                  <FormGroup>
+                                    <label className="form-control-label" htmlFor="input-stuckHours">Stuck in queue after (hours)</label>
+                                    <Input
+                                      value={statusNotifications.stuckHours}
+                                      onChange={e => updateStatusNotifications({ stuckHours: parseInt(e.target.value) || 0 })}
+                                      className="form-control-alternative"
+                                      id="input-stuckHours"
+                                      type="number"
+                                      min="1"
+                                    />
+                                  </FormGroup>
+                                </Col>
+                                </Row>
+                          <Row>
+                            <Col md="12">
+                              <FormGroup className="custom-control custom-control-alternative custom-checkbox mb-3">
+                                <Input
+                                  className="custom-control-input"
+                                  id="statusNotificationsRenotify"
+                                  type="checkbox"
+                                  onChange={e => updateStatusNotifications({ renotifyEnabled: !statusNotifications.renotifyEnabled })}
+                                  checked={statusNotifications.renotifyEnabled}
+                                />
+                                <label
+                                  className="custom-control-label"
+                                  htmlFor="statusNotificationsRenotify"
+                                >
+                                  <span className="text-muted">Re-notify requesters while the request is still stalled</span>
+                                </label>
+                              </FormGroup>
+                            </Col>
+                          </Row>
+                                {
+                                  statusNotifications.renotifyEnabled
+                                    ? <Row>
+                                <Col lg="4">
+                                  <FormGroup>
+                                    <label className="form-control-label" htmlFor="input-renotifyIntervalHours">Re-notify every (hours)</label>
+                                    <Input
+                                      value={statusNotifications.renotifyIntervalHours}
+                                      onChange={e => updateStatusNotifications({ renotifyIntervalHours: parseInt(e.target.value) || 0 })}
+                                      className="form-control-alternative"
+                                      id="input-renotifyIntervalHours"
+                                      type="number"
+                                      min="1"
+                                    />
+                                  </FormGroup>
+                                </Col>
+                                <Col lg="4">
+                                  <FormGroup>
+                                    <label className="form-control-label" htmlFor="input-renotifyMaxCount">Maximum number of re-notifications</label>
+                                    <Input
+                                      value={statusNotifications.renotifyMaxCount}
+                                      onChange={e => updateStatusNotifications({ renotifyMaxCount: parseInt(e.target.value) || 0 })}
+                                      className="form-control-alternative"
+                                      id="input-renotifyMaxCount"
+                                      type="number"
+                                      min="1"
+                                    />
+                                  </FormGroup>
+                                </Col>
+                                    </Row>
+                                    : null
+                                }
+                              </>
+                              : null
+                          }
                         </>
                         : null
                     }
