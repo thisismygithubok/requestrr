@@ -37,6 +37,7 @@ namespace Requestrr.WebApi.RequestrrBot
         private MovieNotificationEngine _movieNotificationEngine;
         private TvShowNotificationEngine _tvShowNotificationEngine;
         private MusicNotificationEngine _musicNotificationEngine;
+        private RequestStatusMonitor _requestStatusMonitor;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ChatBot> _logger;
         private readonly DiscordSettingsProvider _discordSettingsProvider;
@@ -392,6 +393,44 @@ namespace Requestrr.WebApi.RequestrrBot
             {
                 _logger.LogError(ex, "Error while starting music notification engine: " + ex.Message);
             }
+
+            try
+            {
+                if (_requestStatusMonitor != null)
+                {
+                    await _requestStatusMonitor.StopAsync();
+                    _requestStatusMonitor = null;
+                }
+
+                var statusSettings = _currentSettings.StatusNotifications;
+
+                if (statusSettings != null && statusSettings.Enabled && _currentSettings.NotificationMode != NotificationMode.Disabled)
+                {
+                    _requestStatusMonitor = new RequestStatusMonitor(
+                        statusSettings,
+                        _requestStatusRepository,
+                        _movieNotificationRepository.GetAllMovieNotifications,
+                        _currentSettings.MovieDownloadClient == DownloadClient.Radarr ? _radarrDownloadClient : null,
+                        _tvShowNotificationRepository.GetAllTvShowNotifications,
+                        _currentSettings.TvShowDownloadClient == DownloadClient.Sonarr ? _sonarrDownloadClient : null,
+                        _musicNotificationRepository.GetAllMusicNotifications,
+                        _currentSettings.MusicDownloadClient == DownloadClient.Lidarr ? _lidarrDownloadClient : null,
+                        CreateStatusMessageSender(),
+                        _logger,
+                        () => DateTime.UtcNow);
+
+                    _requestStatusMonitor.Start();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error while starting request status monitor: " + ex.Message);
+            }
+        }
+
+        private IStatusMessageSender CreateStatusMessageSender()
+        {
+            return new DiscordStatusMessageSender(_client, _currentSettings.NotificationMode, _currentSettings.NotificationChannels.Select(x => ulong.Parse(x)).ToArray(), _logger);
         }
 
 

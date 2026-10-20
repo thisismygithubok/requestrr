@@ -9,6 +9,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Requestrr.WebApi\locales\english.json" Link="english.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Requestrr.WebApi\Requestrr.WebApi.csproj" />
   </ItemGroup>
 </Project>

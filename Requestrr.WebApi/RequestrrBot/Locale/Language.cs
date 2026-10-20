@@ -25,6 +25,10 @@ namespace Requestrr.WebApi.RequestrrBot.Locale
 
         public static string IssueEnabledStart = "[IssueEnabledStart]";
         public static string IssueEnabledEnd = "[IssueEnabledEnd]";
+
+        public static string StatusTitle = "[Title]";
+        public static string StatusItems = "[Items]";
+        public static string UserMention = "[UserMention]";
     }
 
     public class Language
@@ -149,6 +153,33 @@ namespace Requestrr.WebApi.RequestrrBot.Locale
 
         [JsonProperty("Discord.Notification.Movie.DM")]
         public string DiscordNotificationMovieDM { get; set; }
+
+        [JsonProperty("Discord.Notification.Status.Header.DM")]
+        public string DiscordNotificationStatusHeaderDM { get; set; }
+
+        [JsonProperty("Discord.Notification.Status.Header.Channel")]
+        public string DiscordNotificationStatusHeaderChannel { get; set; }
+
+        [JsonProperty("Discord.Notification.Status.NoRelease")]
+        public string DiscordNotificationStatusNoRelease { get; set; }
+
+        [JsonProperty("Discord.Notification.Status.Downloading")]
+        public string DiscordNotificationStatusDownloading { get; set; }
+
+        [JsonProperty("Discord.Notification.Status.Stuck")]
+        public string DiscordNotificationStatusStuck { get; set; }
+
+        [JsonProperty("Discord.Notification.Recheck.Success.DM")]
+        public string DiscordNotificationRecheckSuccessDM { get; set; }
+
+        [JsonProperty("Discord.Notification.Recheck.Success.Channel")]
+        public string DiscordNotificationRecheckSuccessChannel { get; set; }
+
+        [JsonProperty("Discord.Notification.Recheck.Failure.DM")]
+        public string DiscordNotificationRecheckFailureDM { get; set; }
+
+        [JsonProperty("Discord.Notification.Recheck.Failure.Channel")]
+        public string DiscordNotificationRecheckFailureChannel { get; set; }
 
         [JsonProperty("Discord.Command.Ping.Response")]
         public string DiscordCommandPingResponse { get; set; }
