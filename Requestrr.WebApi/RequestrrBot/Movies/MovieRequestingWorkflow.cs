@@ -124,7 +124,7 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
                 {
                     UserId = _user.UserId,
                     Title = movie.Title,
-                    StatusKey = RequestStatusKeys.Movie(_user.UserId, theMovieDbId),
+                    StatusKeys = new[] { RequestStatusKeys.Movie(_user.UserId, theMovieDbId) },
                     AttemptedAtUtc = attemptedAt,
                     ExistsAsync = async () => !string.IsNullOrEmpty((await _searcher.SearchMovieAsync(new MovieRequest(_user, _categoryId), theMovieDbId)).DownloadClientId),
                     SubscribeAsync = () => _notificationWorkflow.NotifyForNewRequestAsync(_user.UserId, movie),

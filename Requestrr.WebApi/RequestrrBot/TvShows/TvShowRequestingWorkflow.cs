@@ -190,11 +190,13 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
             }
             catch
             {
+                var subscribedSeasons = TvSeasonSubscriptions.For(tvShow, selectedSeason);
+
                 _recheckService?.Schedule(new RecheckRequest
                 {
                     UserId = _user.UserId,
                     Title = tvShow.Title,
-                    StatusKey = RequestStatusKeys.TvSeason(_user.UserId, tvDbId, seasonNumber),
+                    StatusKeys = subscribedSeasons.Select(x => RequestStatusKeys.TvSeason(_user.UserId, tvDbId, x.SeasonNumber)).ToArray(),
                     AttemptedAtUtc = attemptedAt,
                     ExistsAsync = async () =>
                     {
@@ -203,7 +205,13 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
                         return !string.IsNullOrEmpty(refreshedTvShow.DownloadClientId)
                             && (!(selectedSeason is NormalTvSeason) || refreshedTvShow.Seasons.Any(x => x.SeasonNumber == seasonNumber && x.IsRequested != RequestedState.None));
                     },
-                    SubscribeAsync = () => _tvShowNotificationWorkflow.NotifyForNewRequestAsync(_user.UserId, tvShow, selectedSeason),
+                    SubscribeAsync = async () =>
+                    {
+                        foreach (var season in subscribedSeasons)
+                        {
+                            await _tvShowNotificationWorkflow.NotifyForNewRequestAsync(_user.UserId, tvShow, season);
+                        }
+                    },
                 });
                 throw;
             }

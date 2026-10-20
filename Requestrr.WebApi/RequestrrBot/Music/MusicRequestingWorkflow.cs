@@ -118,7 +118,7 @@ namespace Requestrr.WebApi.RequestrrBot.Music
                 {
                     UserId = _user.UserId,
                     Title = musicArtist.ArtistName,
-                    StatusKey = RequestStatusKeys.Music(_user.UserId, musicArtist.ArtistId),
+                    StatusKeys = new[] { RequestStatusKeys.Music(_user.UserId, musicArtist.ArtistId) },
                     AttemptedAtUtc = attemptedAt,
                     ExistsAsync = async () => !string.IsNullOrEmpty((await _musicSearcher.SearchMusicForArtistIdAsync(new MusicRequest(_user, _categoryId), artistId)).DownloadClientId),
                     SubscribeAsync = () => _notificationWorkflow.NotifyForNewRequestAsync(_user.UserId, musicArtist),

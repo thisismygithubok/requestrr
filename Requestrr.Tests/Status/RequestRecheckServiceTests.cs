@@ -33,7 +33,7 @@ namespace Requestrr.Tests.Status
             {
                 UserId = "u1",
                 Title = "Dune",
-                StatusKey = Key,
+                StatusKeys = new[] { Key },
                 AttemptedAtUtc = AttemptedAt,
                 ExistsAsync = exists,
                 SubscribeAsync = subscribe ?? (() => Task.CompletedTask),

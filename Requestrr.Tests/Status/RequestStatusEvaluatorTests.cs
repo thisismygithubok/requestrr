@@ -138,6 +138,22 @@ namespace Requestrr.Tests.Status
         }
 
         [Fact]
+        public void Evaluate_DownloadingClockStartsWhenQueued()
+        {
+            var result = Evaluate(Unit(queue: new ArrQueueItem { TrackedDownloadStatus = "ok", AddedAtUtc = Now.AddHours(-1) }), RequestedHoursAgo(48));
+
+            Assert.Empty(result.Problems);
+        }
+
+        [Fact]
+        public void Evaluate_StuckClockStartsWhenQueued()
+        {
+            var result = Evaluate(Unit(queue: new ArrQueueItem { TrackedDownloadStatus = "warning", AddedAtUtc = Now.AddMinutes(-30) }), RequestedHoursAgo(48));
+
+            Assert.Empty(result.Problems);
+        }
+
+        [Fact]
         public void Validate_ZeroHours_ReturnsError()
         {
             Assert.NotNull(new StatusNotificationSettings { StuckHours = 0 }.Validate());

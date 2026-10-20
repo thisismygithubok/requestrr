@@ -27,6 +27,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
                 Size = (double?)x["size"] ?? 0,
                 SizeLeft = (double?)x["sizeleft"] ?? 0,
                 TimeLeft = (string)x["timeleft"],
+                AddedAtUtc = ((DateTime?)x["added"])?.ToUniversalTime(),
             }).ToArray();
         }
     }

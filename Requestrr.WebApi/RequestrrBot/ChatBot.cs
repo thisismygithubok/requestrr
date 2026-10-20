@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -38,6 +39,8 @@ namespace Requestrr.WebApi.RequestrrBot
         private TvShowNotificationEngine _tvShowNotificationEngine;
         private MusicNotificationEngine _musicNotificationEngine;
         private RequestStatusMonitor _requestStatusMonitor;
+        // ApplyBotConfigurationAsync can run concurrently from Ready and RestartBot; without this a monitor can be orphaned.
+        private readonly SemaphoreSlim _requestStatusMonitorLock = new SemaphoreSlim(1, 1);
         private readonly RequestRecheckService _requestRecheckService;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ChatBot> _logger;
@@ -396,6 +399,8 @@ namespace Requestrr.WebApi.RequestrrBot
                 _logger.LogError(ex, "Error while starting music notification engine: " + ex.Message);
             }
 
+            await _requestStatusMonitorLock.WaitAsync();
+
             try
             {
                 _requestRecheckService.Sender = _currentSettings.NotificationMode != NotificationMode.Disabled ? CreateStatusMessageSender() : null;
@@ -429,6 +434,10 @@ namespace Requestrr.WebApi.RequestrrBot
             catch (System.Exception ex)
             {
                 _logger.LogError(ex, "Error while starting request status monitor: " + ex.Message);
+            }
+            finally
+            {
+                _requestStatusMonitorLock.Release();
             }
         }
 

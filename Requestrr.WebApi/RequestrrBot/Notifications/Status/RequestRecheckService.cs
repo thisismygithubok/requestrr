@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
     {
         public string UserId { get; set; }
         public string Title { get; set; }
-        public string StatusKey { get; set; }
+        public IReadOnlyList<string> StatusKeys { get; set; }
         public DateTime AttemptedAtUtc { get; set; }
         public Func<Task<bool>> ExistsAsync { get; set; }
         public Func<Task> SubscribeAsync { get; set; }
@@ -57,7 +58,10 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
                     if (exists)
                     {
                         await request.SubscribeAsync();
-                        _statusRepository.Backdate(request.StatusKey, request.AttemptedAtUtc);
+                        foreach (var statusKey in request.StatusKeys)
+                        {
+                            _statusRepository.Backdate(statusKey, request.AttemptedAtUtc);
+                        }
                     }
 
                     var sender = Sender;

@@ -37,6 +37,10 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
                     ? unit.ReleasedAtUtc.Value
                     : subscription.RequestedAtUtc;
 
+                // Download and queue problems are timed from when the item entered the queue, not from the request.
+                if (state != RequestStatusState.NoRelease && unit.Queue.AddedAtUtc.HasValue && unit.Queue.AddedAtUtc.Value > clockStart)
+                    clockStart = unit.Queue.AddedAtUtc.Value;
+
                 if (nowUtc - clockStart < TimeSpan.FromHours(ThresholdHours(state.Value, settings)))
                     continue;
 

@@ -23,6 +23,15 @@ namespace Requestrr.Tests.Status
             Assert.Equal(100, item.Size);
             Assert.Equal(25, item.SizeLeft);
             Assert.Equal("01:30:00", item.TimeLeft);
+            Assert.Null(item.AddedAtUtc);
+        }
+
+        [Fact]
+        public void Parse_AddedDate()
+        {
+            var item = Assert.Single(ArrQueueParser.Parse("[{\"movieId\":5,\"added\":\"2026-01-10T11:00:00Z\"}]"));
+
+            Assert.Equal(new DateTime(2026, 1, 10, 11, 0, 0, DateTimeKind.Utc), item.AddedAtUtc);
         }
 
         [Fact]

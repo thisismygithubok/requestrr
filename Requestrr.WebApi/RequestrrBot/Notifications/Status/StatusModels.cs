@@ -25,6 +25,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Status
         public double Size { get; set; }
         public double SizeLeft { get; set; }
         public string TimeLeft { get; set; }
+        public DateTime? AddedAtUtc { get; set; }
 
         public bool IsStuck =>
             Is(TrackedDownloadStatus, "warning", "error")
