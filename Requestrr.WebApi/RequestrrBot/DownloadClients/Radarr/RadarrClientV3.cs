@@ -10,11 +10,12 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Requestrr.WebApi.Extensions;
 using Requestrr.WebApi.RequestrrBot.Movies;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using static Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr.RadarrClient;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
 {
-    public class RadarrClientV3 : IMovieRequester, IMovieSearcher
+    public class RadarrClientV3 : IMovieRequester, IMovieSearcher, IMovieStatusProvider
     {
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<RadarrClient> _logger;
@@ -379,6 +380,21 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
             }
 
             return string.Empty;
+        }
+
+        public async Task<ArrItemStatus> GetMovieStatusAsync(int theMovieDbId, CancellationToken token)
+        {
+            var response = await HttpGetAsync($"{BaseURL}/movie?tmdbid={theMovieDbId}");
+            await response.ThrowIfNotSuccessfulAsync($"Could not search movie by tmdbid {theMovieDbId}", x => x.error);
+
+            var movie = JArray.Parse(await response.Content.ReadAsStringAsync()).FirstOrDefault() as JObject;
+            if (movie == null)
+                return null;
+
+            var queueResponse = await HttpGetAsync($"{BaseURL}/queue/details?movieId={(int)movie["id"]}");
+            await queueResponse.ThrowIfNotSuccessfulAsync("RadarrGetQueue failed", x => x.error);
+
+            return ArrStatusMapping.MapMovie(movie, ArrQueueParser.Parse(await queueResponse.Content.ReadAsStringAsync()));
         }
 
         private async Task<JSONMovie> FindExistingMovieByMovieDbIdAsync(int theMovieDbId)

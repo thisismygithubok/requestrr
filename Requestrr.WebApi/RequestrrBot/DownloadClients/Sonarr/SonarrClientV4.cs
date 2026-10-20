@@ -9,12 +9,13 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Requestrr.WebApi.Extensions;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 using static Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr.SonarrClient;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
 {
-    public class SonarrClientV4 : ITvShowSearcher, ITvShowRequester
+    public class SonarrClientV4 : ITvShowSearcher, ITvShowRequester, ITvShowStatusProvider
     {
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<SonarrClient> _logger;
@@ -457,6 +458,31 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
                     }
                 }));
             }
+        }
+
+        public async Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
+        {
+            var response = await HttpGetAsync($"{BaseURL}/series?tvdbId={theTvDbId}");
+            await response.ThrowIfNotSuccessfulAsync("SonarrGetSeriesByTvDbId failed", x => x.error);
+
+            var series = JArray.Parse(await response.Content.ReadAsStringAsync()).FirstOrDefault();
+            if (series == null)
+                return null;
+
+            var seriesId = (int)series["id"];
+
+            var episodesResponse = await HttpGetAsync($"{BaseURL}/episode?seriesId={seriesId}");
+            await episodesResponse.ThrowIfNotSuccessfulAsync("SonarrGetSeriesEpisode failed", x => x.error);
+
+            var queueResponse = await HttpGetAsync($"{BaseURL}/queue/details?seriesId={seriesId}");
+            await queueResponse.ThrowIfNotSuccessfulAsync("SonarrGetQueue failed", x => x.error);
+
+            return ArrStatusMapping.MapSeason(
+                (string)series["title"],
+                JArray.Parse(await episodesResponse.Content.ReadAsStringAsync()),
+                seasonNumber,
+                ArrQueueParser.Parse(await queueResponse.Content.ReadAsStringAsync()),
+                DateTime.UtcNow);
         }
 
         private async Task<JSONTvShow> FindSeriesInSonarrAsync(int tvDbId)

@@ -3,11 +3,13 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Requestrr.WebApi.RequestrrBot.Movies;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
 {
-    public class RadarrClient : IMovieRequester, IMovieSearcher
+    public class RadarrClient : IMovieRequester, IMovieSearcher, IMovieStatusProvider
     {
+        private static bool _statusUnsupportedLogged;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<RadarrClient> _logger;
         private readonly RadarrSettingsProvider _settingsProvider;
@@ -90,6 +92,21 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr
         public Task<MovieRequestResult> RequestMovieAsync(MovieRequest request, Movie movie)
         {
             return CreateInstance<IMovieRequester>().RequestMovieAsync(request, movie);
+        }
+
+        public Task<ArrItemStatus> GetMovieStatusAsync(int theMovieDbId, System.Threading.CancellationToken token)
+        {
+            var provider = CreateInstance<IMovieStatusProvider>();
+            if (provider != null)
+                return provider.GetMovieStatusAsync(theMovieDbId, token);
+
+            if (!_statusUnsupportedLogged)
+            {
+                _statusUnsupportedLogged = true;
+                _logger.LogWarning("Request status notifications are not supported for Radarr V2, skipping.");
+            }
+
+            return Task.FromResult<ArrItemStatus>(null);
         }
 
         private T CreateInstance<T>() where T : class

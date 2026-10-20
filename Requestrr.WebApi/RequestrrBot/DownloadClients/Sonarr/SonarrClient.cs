@@ -3,12 +3,14 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
 {
-    public class SonarrClient : ITvShowSearcher, ITvShowRequester
+    public class SonarrClient : ITvShowSearcher, ITvShowRequester, ITvShowStatusProvider
     {
+        private static bool _statusUnsupportedLogged;
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<SonarrClient> _logger;
         private SonarrSettingsProvider _settingsProvider;
@@ -133,6 +135,21 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
         public Task<TvShowRequestResult> RequestTvShowAsync(TvShowRequest request, TvShow tvShow, TvSeason season)
         {
             return CreateInstance<ITvShowRequester>().RequestTvShowAsync(request, tvShow, season);
+        }
+
+        public Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
+        {
+            var provider = CreateInstance<ITvShowStatusProvider>();
+            if (provider != null)
+                return provider.GetSeasonStatusAsync(theTvDbId, seasonNumber, token);
+
+            if (!_statusUnsupportedLogged)
+            {
+                _statusUnsupportedLogged = true;
+                _logger.LogWarning("Request status notifications are not supported for Sonarr V2, skipping.");
+            }
+
+            return Task.FromResult<ArrItemStatus>(null);
         }
 
         private T CreateInstance<T>() where T : class
