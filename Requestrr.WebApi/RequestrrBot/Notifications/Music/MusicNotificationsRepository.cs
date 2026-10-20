@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System.Runtime.ConstrainedExecution;
 
 namespace Requestrr.WebApi.RequestrrBot.Notifications.Music
@@ -34,9 +35,12 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Music
 
         private HashSet<Notification> _notifications = new HashSet<Notification>();
         private object _lock = new object();
+        private readonly RequestStatusRepository _statusRepository;
 
-        public MusicNotificationsRepository()
+        public MusicNotificationsRepository(RequestStatusRepository statusRepository)
         {
+            _statusRepository = statusRepository;
+
             foreach (var notification in NotificationsFile.Read().Music)
             {
                 foreach (var musicId in notification.MusicArtistId)
@@ -54,6 +58,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Music
             {
                 if (_notifications.Add(new Notification(userId, musicArtistId)))
                 {
+                    _statusRepository.Start(RequestStatusKeys.Music(userId, musicArtistId), DateTime.UtcNow);
                     NotificationsFile.WriteMusicArtist(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(y => y.MusicArtistId).ToArray()));
                 }
             }
@@ -67,6 +72,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Music
             {
                 if (_notifications.Remove(new Notification(userId, musicArtistId)))
                 {
+                    _statusRepository.Remove(RequestStatusKeys.Music(userId, musicArtistId));
                     NotificationsFile.WriteMusicArtist(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(y => y.MusicArtistId).ToArray()));
                 }
             }

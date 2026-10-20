@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System.Linq;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
@@ -9,9 +11,12 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
         private HashSet<TvShowNotification> _notifications = new HashSet<TvShowNotification>();
 
         private object _lock = new object();
+        private readonly RequestStatusRepository _statusRepository;
 
-        public TvShowNotificationsRepository()
+        public TvShowNotificationsRepository(RequestStatusRepository statusRepository)
         {
+            _statusRepository = statusRepository;
+
             foreach (var userNotif in NotificationsFile.Read().TvShows)
             {
                 foreach (var tvNotif in userNotif.Notifications)
@@ -44,9 +49,15 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
             {
                 if (tvSeason is FutureTvSeasons)
                 {
-                    _notifications.Remove(new FutureSeasonsNotification(userId, tvShowId));
+                    if (_notifications.TryGetValue(new FutureSeasonsNotification(userId, tvShowId), out var previous))
+                    {
+                        _notifications.Remove(previous);
+                        _statusRepository.Remove(RequestStatusKeys.TvSeason(userId, tvShowId, previous.SeasonNumber));
+                    }
+
                     if (_notifications.Add(new FutureSeasonsNotification(userId, tvShowId, tvSeason.SeasonNumber)))
                     {
+                        _statusRepository.Start(RequestStatusKeys.TvSeason(userId, tvShowId, tvSeason.SeasonNumber), DateTime.UtcNow);
                         WriteTvShowsNotifications();
                     }
                 }
@@ -54,6 +65,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
                 {
                     if (_notifications.Add(new SeasonNotification(userId, tvShowId, tvSeason.SeasonNumber)))
                     {
+                        _statusRepository.Start(RequestStatusKeys.TvSeason(userId, tvShowId, tvSeason.SeasonNumber), DateTime.UtcNow);
                         WriteTvShowsNotifications();
                     }
                 }
@@ -66,6 +78,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
             {
                 if (_notifications.Remove(notification))
                 {
+                    _statusRepository.Remove(RequestStatusKeys.TvSeason(notification.UserId, notification.TvShowId, notification.SeasonNumber));
                     WriteTvShowsNotifications();
                 }
             }

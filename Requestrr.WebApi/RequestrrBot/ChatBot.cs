@@ -25,6 +25,7 @@ using Requestrr.WebApi.RequestrrBot.Music;
 using Requestrr.WebApi.RequestrrBot.Notifications;
 using Requestrr.WebApi.RequestrrBot.Notifications.Movies;
 using Requestrr.WebApi.RequestrrBot.Notifications.Music;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.Notifications.TvShows;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
@@ -44,9 +45,10 @@ namespace Requestrr.WebApi.RequestrrBot
         private MovieWorkflowFactory _movieWorkflowFactory;
         private TvShowWorkflowFactory _tvShowWorkflowFactory;
         private MusicWorkflowFactory _musicWorkflowFactory;
-        private MovieNotificationsRepository _movieNotificationRepository = new MovieNotificationsRepository();
-        private TvShowNotificationsRepository _tvShowNotificationRepository = new TvShowNotificationsRepository();
-        private MusicNotificationsRepository _musicNotificationRepository = new MusicNotificationsRepository();
+        private readonly RequestStatusRepository _requestStatusRepository = new RequestStatusRepository();
+        private readonly MovieNotificationsRepository _movieNotificationRepository;
+        private readonly TvShowNotificationsRepository _tvShowNotificationRepository;
+        private readonly MusicNotificationsRepository _musicNotificationRepository;
         private OverseerrClient _overseerrClient;
         private OmbiClient _ombiDownloadClient;
         private RadarrClient _radarrDownloadClient;
@@ -66,6 +68,9 @@ namespace Requestrr.WebApi.RequestrrBot
             _logger = logger;
             _serviceProvider = serviceProvider;
             _discordSettingsProvider = discordSettingsProvider;
+            _movieNotificationRepository = new MovieNotificationsRepository(_requestStatusRepository);
+            _tvShowNotificationRepository = new TvShowNotificationsRepository(_requestStatusRepository);
+            _musicNotificationRepository = new MusicNotificationsRepository(_requestStatusRepository);
             _overseerrClient = new OverseerrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<OverseerrClient>>(), serviceProvider.Get<OverseerrSettingsProvider>());
             _ombiDownloadClient = new OmbiClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<OmbiClient>>(), serviceProvider.Get<OmbiSettingsProvider>());
             _radarrDownloadClient = new RadarrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<RadarrClient>>(), serviceProvider.Get<RadarrSettingsProvider>());
