@@ -53,7 +53,7 @@ Status alerts and the re-check result (Goal 4) use the existing `NotificationMod
 ### Units, clock and dedupe
 - **Unit** = movie (Radarr), episode (Sonarr), album (Lidarr). Notified state is keyed per (user, unit, state).
 - **Clock per unit** = `max(RequestedAt, unit air/release date)`. Episodes airing or albums releasing after the request start their own clock at their air/release date. For `FutureSeasonsNotification`, every monitored season is evaluated with the same per-episode clock.
-- **Dedupe**: on each evaluation, collect units that (a) passed their state's threshold and have never been notified for that state, or (b) are due a re-notify (enabled, interval elapsed since `LastNotifiedAt`, `NotifiedCount` < max). If the set is non-empty, send **one** aggregated message per (user, subscription) listing all currently problematic units, and update the counters for the units in the set. A unit changing state (e.g. no release → downloading) is a new (unit, state) and may notify once more.
+- **Dedupe**: on each evaluation, collect units that (a) passed their state's threshold and have never been notified for that state, or (b) are due a re-notify (enabled, interval elapsed since `LastNotifiedAt`, `NotifiedCount` ≤ max, i.e. max = number of re-notifications after the first alert). If the set is non-empty, send **one** aggregated message per (user, subscription) listing all currently problematic units, and update the counters for the units in the set. A unit changing state (e.g. no release → downloading) is a new (unit, state) and may notify once more.
 
 ### Thresholds and settings (portal)
 Placed alongside the existing notification settings on the Chat Clients page (`ClientApp/src/views/ChatClients.jsx`, backed by `DiscordSettings` / `ChatClientsSettingsModel`).
@@ -70,10 +70,10 @@ Placed alongside the existing notification settings on the Chat Clients page (`C
 
 One threshold per state; one shared re-notify configuration across all states. A new `SettingsFileUpgrader` step adds the keys with defaults.
 
-Validation (API and portal): thresholds and interval are integers ≥ 1 hour; maximum count is an integer ≥ 1. When the movie or TV backend is Overseerr/Ombi, the portal shows a note that status alerts apply only to Radarr/Sonarr/Lidarr-backed media.
+Validation (API and portal): thresholds and interval are integers ≥ 1 hour; maximum count is an integer ≥ 1. The portal shows a static note that status alerts apply only to Radarr/Sonarr/Lidarr-backed media (not Overseerr/Ombi).
 
 ### State evaluation
-- Runs inside the existing per-media notification loops (`MovieNotificationEngine`, `TvShowNotificationEngine`, `MusicNotificationEngine`, 1-minute cadence), after the existing availability check. Status queries may run less often than every minute (builder's call) to limit *arr API load.
+- Runs in a status monitor loop started/stopped together with the existing per-media notification engines (same lifecycle in `ChatBot`), every 15 minutes, to limit *arr API load.
 - Queue data: *arr `queue` endpoint (progress, `timeleft` / `estimatedCompletionTime`, tracked download status/state).
 - **Stuck** = queue item with `trackedDownloadStatus` of `warning` or `error`, or `trackedDownloadState` of `importBlocked`, `importPending` (past threshold), `failedPending`, or `failed`. Older API versions without these fields: use `status` = `warning`/`failed`.
 - **Radarr eligibility**: movie must be monitored and released/available (`isAvailable` where the API provides it; otherwise physical/digital release date in the past). Unreleased movies are ignored.
