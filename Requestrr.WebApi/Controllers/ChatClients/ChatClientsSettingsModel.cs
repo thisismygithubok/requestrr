@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.Controllers.ChatClients
 {
@@ -32,6 +33,8 @@ namespace Requestrr.WebApi.Controllers.ChatClients
         public string[] NotificationChannels { get; set; }
 
         public bool AutomaticallyPurgeCommandMessages { get; set; }
+
+        public StatusNotificationSettings StatusNotifications { get; set; }
 
         public string Language { get; set; }
 

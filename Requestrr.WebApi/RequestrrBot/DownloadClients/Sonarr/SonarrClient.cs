@@ -1,13 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+using Requestrr.WebApi.Extensions;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
 {
-    public class SonarrClient : ITvShowSearcher, ITvShowRequester
+    public class SonarrClient : ITvShowSearcher, ITvShowRequester, ITvShowStatusProvider
     {
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<SonarrClient> _logger;
@@ -133,6 +138,38 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
         public Task<TvShowRequestResult> RequestTvShowAsync(TvShowRequest request, TvShow tvShow, TvSeason season)
         {
             return CreateInstance<ITvShowRequester>().RequestTvShowAsync(request, tvShow, season);
+        }
+
+        public Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
+        {
+            // Sonarr V2 has no status provider, so status alerts are skipped for it.
+            return CreateInstance<ITvShowStatusProvider>()?.GetSeasonStatusAsync(theTvDbId, seasonNumber, token) ?? Task.FromResult<ArrItemStatus>(null);
+        }
+
+        // Shared by the V3 and V4 clients, which use the same API for this.
+        internal static async Task<ArrItemStatus> FetchSeasonStatusAsync(Func<string, Task<HttpResponseMessage>> httpGetAsync, string baseUrl, int theTvDbId, int seasonNumber)
+        {
+            var response = await httpGetAsync($"{baseUrl}/series?tvdbId={theTvDbId}");
+            await response.ThrowIfNotSuccessfulAsync("SonarrGetSeriesByTvDbId failed", x => x.error);
+
+            var series = JArray.Parse(await response.Content.ReadAsStringAsync()).FirstOrDefault();
+            if (series == null)
+                return null;
+
+            var seriesId = (int)series["id"];
+
+            var episodesResponse = await httpGetAsync($"{baseUrl}/episode?seriesId={seriesId}");
+            await episodesResponse.ThrowIfNotSuccessfulAsync("SonarrGetSeriesEpisode failed", x => x.error);
+
+            var queueResponse = await httpGetAsync($"{baseUrl}/queue/details?seriesId={seriesId}");
+            await queueResponse.ThrowIfNotSuccessfulAsync("SonarrGetQueue failed", x => x.error);
+
+            return ArrStatusMapping.MapSeason(
+                (string)series["title"],
+                JArray.Parse(await episodesResponse.Content.ReadAsStringAsync()),
+                seasonNumber,
+                ArrQueueParser.Parse(await queueResponse.Content.ReadAsStringAsync()),
+                DateTime.UtcNow);
         }
 
         private T CreateInstance<T>() where T : class

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Requestrr.WebApi.Extensions;
 using Requestrr.WebApi.RequestrrBot.Music;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +15,7 @@ using static Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr.LidarrClient;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr
 {
-    public class LidarrClientV1 : IMusicSearcher, IMusicRequester
+    public class LidarrClientV1 : IMusicSearcher, IMusicRequester, IMusicStatusProvider
     {
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<LidarrClient> _logger;
@@ -300,6 +301,30 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr
         }
 
 
+
+        public async Task<ArrItemStatus> GetArtistStatusAsync(string artistId, CancellationToken token)
+        {
+            HttpResponseMessage response = await HttpGetAsync($"{BaseURL}/artist?mbId={artistId}");
+            await response.ThrowIfNotSuccessfulAsync("Could not search artist by Id", x => x.error);
+
+            JToken artist = JArray.Parse(await response.Content.ReadAsStringAsync()).FirstOrDefault();
+            if (artist == null)
+                return null;
+
+            int lidarrArtistId = (int)artist["id"];
+
+            HttpResponseMessage albumsResponse = await HttpGetAsync($"{BaseURL}/album?artistId={lidarrArtistId}");
+            await albumsResponse.ThrowIfNotSuccessfulAsync("LidarrGetAlbums failed", x => x.error);
+
+            HttpResponseMessage queueResponse = await HttpGetAsync($"{BaseURL}/queue/details?artistId={lidarrArtistId}");
+            await queueResponse.ThrowIfNotSuccessfulAsync("LidarrGetQueue failed", x => x.error);
+
+            return ArrStatusMapping.MapArtist(
+                (string)artist["artistName"],
+                JArray.Parse(await albumsResponse.Content.ReadAsStringAsync()),
+                ArrQueueParser.Parse(await queueResponse.Content.ReadAsStringAsync()),
+                DateTime.UtcNow);
+        }
 
         private async Task<JSONMusicArtist> FindExistingArtistByMusicDbIdAsync(string artistId)
         {

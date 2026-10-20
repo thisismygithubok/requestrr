@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Requestrr.WebApi.RequestrrBot.Music;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr
 {
-    public class LidarrClient : IMusicSearcher, IMusicRequester
+    public class LidarrClient : IMusicSearcher, IMusicRequester, IMusicStatusProvider
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<LidarrClient> _logger;
@@ -129,6 +130,11 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr
             return CreateInstance<IMusicRequester>().RequestMusicAsync(request, music);
         }
 
+
+        public Task<ArrItemStatus> GetArtistStatusAsync(string artistId, CancellationToken token)
+        {
+            return CreateInstance<IMusicStatusProvider>().GetArtistStatusAsync(artistId, token);
+        }
 
         private T CreateInstance<T>() where T : class
         {

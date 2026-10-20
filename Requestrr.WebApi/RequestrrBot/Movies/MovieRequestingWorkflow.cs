@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.Movies
 {
@@ -13,6 +14,7 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
         private readonly IMovieRequester _requester;
         private readonly IMovieUserInterface _userInterface;
         private readonly IMovieNotificationWorkflow _notificationWorkflow;
+        private readonly RequestRecheckService _recheckService;
 
         public MovieRequestingWorkflow(
             MovieUserRequester user,
@@ -20,7 +22,8 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
             IMovieSearcher searcher,
             IMovieRequester requester,
             IMovieUserInterface userInterface,
-            IMovieNotificationWorkflow movieNotificationWorkflow)
+            IMovieNotificationWorkflow movieNotificationWorkflow,
+            RequestRecheckService recheckService)
         {
             _categoryId = categoryId;
             _user = user;
@@ -28,6 +31,7 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
             _requester = requester;
             _userInterface = userInterface;
             _notificationWorkflow = movieNotificationWorkflow;
+            _recheckService = recheckService;
         }
 
         public async Task SearchMovieAsync(string movieName)
@@ -107,7 +111,26 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
         public async Task RequestMovieAsync(int theMovieDbId)
         {
             var movie = await _searcher.SearchMovieAsync(new MovieRequest(_user, _categoryId), theMovieDbId);
-            var result = await _requester.RequestMovieAsync(new MovieRequest(_user, _categoryId), movie);
+            var attemptedAt = DateTime.UtcNow;
+            MovieRequestResult result;
+
+            try
+            {
+                result = await _requester.RequestMovieAsync(new MovieRequest(_user, _categoryId), movie);
+            }
+            catch
+            {
+                _recheckService?.Schedule(new RecheckRequest
+                {
+                    UserId = _user.UserId,
+                    Title = movie.Title,
+                    StatusKeys = new[] { RequestStatusKeys.Movie(_user.UserId, theMovieDbId) },
+                    AttemptedAtUtc = attemptedAt,
+                    ExistsAsync = async () => !string.IsNullOrEmpty((await _searcher.SearchMovieAsync(new MovieRequest(_user, _categoryId), theMovieDbId)).DownloadClientId),
+                    SubscribeAsync = () => _notificationWorkflow.NotifyForNewRequestAsync(_user.UserId, movie),
+                });
+                throw;
+            }
 
             if (result.WasDenied)
             {

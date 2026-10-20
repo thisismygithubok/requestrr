@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -25,6 +26,7 @@ using Requestrr.WebApi.RequestrrBot.Music;
 using Requestrr.WebApi.RequestrrBot.Notifications;
 using Requestrr.WebApi.RequestrrBot.Notifications.Movies;
 using Requestrr.WebApi.RequestrrBot.Notifications.Music;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.Notifications.TvShows;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
@@ -36,6 +38,10 @@ namespace Requestrr.WebApi.RequestrrBot
         private MovieNotificationEngine _movieNotificationEngine;
         private TvShowNotificationEngine _tvShowNotificationEngine;
         private MusicNotificationEngine _musicNotificationEngine;
+        private RequestStatusMonitor _requestStatusMonitor;
+        // ApplyBotConfigurationAsync can run concurrently from Ready and RestartBot; without this a monitor can be orphaned.
+        private readonly SemaphoreSlim _requestStatusMonitorLock = new SemaphoreSlim(1, 1);
+        private readonly RequestRecheckService _requestRecheckService;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ChatBot> _logger;
         private readonly DiscordSettingsProvider _discordSettingsProvider;
@@ -44,9 +50,10 @@ namespace Requestrr.WebApi.RequestrrBot
         private MovieWorkflowFactory _movieWorkflowFactory;
         private TvShowWorkflowFactory _tvShowWorkflowFactory;
         private MusicWorkflowFactory _musicWorkflowFactory;
-        private MovieNotificationsRepository _movieNotificationRepository = new MovieNotificationsRepository();
-        private TvShowNotificationsRepository _tvShowNotificationRepository = new TvShowNotificationsRepository();
-        private MusicNotificationsRepository _musicNotificationRepository = new MusicNotificationsRepository();
+        private readonly RequestStatusRepository _requestStatusRepository = new RequestStatusRepository();
+        private readonly MovieNotificationsRepository _movieNotificationRepository;
+        private readonly TvShowNotificationsRepository _tvShowNotificationRepository;
+        private readonly MusicNotificationsRepository _musicNotificationRepository;
         private OverseerrClient _overseerrClient;
         private OmbiClient _ombiDownloadClient;
         private RadarrClient _radarrDownloadClient;
@@ -66,14 +73,18 @@ namespace Requestrr.WebApi.RequestrrBot
             _logger = logger;
             _serviceProvider = serviceProvider;
             _discordSettingsProvider = discordSettingsProvider;
+            _movieNotificationRepository = new MovieNotificationsRepository(_requestStatusRepository);
+            _tvShowNotificationRepository = new TvShowNotificationsRepository(_requestStatusRepository);
+            _musicNotificationRepository = new MusicNotificationsRepository(_requestStatusRepository);
+            _requestRecheckService = new RequestRecheckService(_requestStatusRepository, logger);
             _overseerrClient = new OverseerrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<OverseerrClient>>(), serviceProvider.Get<OverseerrSettingsProvider>());
             _ombiDownloadClient = new OmbiClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<OmbiClient>>(), serviceProvider.Get<OmbiSettingsProvider>());
             _radarrDownloadClient = new RadarrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<RadarrClient>>(), serviceProvider.Get<RadarrSettingsProvider>());
             _sonarrDownloadClient = new SonarrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<SonarrClient>>(), serviceProvider.Get<SonarrSettingsProvider>());
             _lidarrDownloadClient = new LidarrClient(serviceProvider.Get<IHttpClientFactory>(), serviceProvider.Get<ILogger<LidarrClient>>(), serviceProvider.Get<LidarrSettingsProvider>());
-            _movieWorkflowFactory = new MovieWorkflowFactory(_discordSettingsProvider, _movieNotificationRepository, _overseerrClient, _ombiDownloadClient, _radarrDownloadClient);
-            _tvShowWorkflowFactory = new TvShowWorkflowFactory(serviceProvider.Get<TvShowsSettingsProvider>(), _discordSettingsProvider, _tvShowNotificationRepository, _overseerrClient, _ombiDownloadClient, _sonarrDownloadClient);
-            _musicWorkflowFactory = new MusicWorkflowFactory(_discordSettingsProvider, _musicNotificationRepository, _lidarrDownloadClient);
+            _movieWorkflowFactory = new MovieWorkflowFactory(_discordSettingsProvider, _movieNotificationRepository, _overseerrClient, _ombiDownloadClient, _radarrDownloadClient, _requestRecheckService);
+            _tvShowWorkflowFactory = new TvShowWorkflowFactory(serviceProvider.Get<TvShowsSettingsProvider>(), _discordSettingsProvider, _tvShowNotificationRepository, _overseerrClient, _ombiDownloadClient, _sonarrDownloadClient, _requestRecheckService);
+            _musicWorkflowFactory = new MusicWorkflowFactory(_discordSettingsProvider, _musicNotificationRepository, _lidarrDownloadClient, _requestRecheckService);
         }
 
         public async void Start()
@@ -387,6 +398,52 @@ namespace Requestrr.WebApi.RequestrrBot
             {
                 _logger.LogError(ex, "Error while starting music notification engine: " + ex.Message);
             }
+
+            await _requestStatusMonitorLock.WaitAsync();
+
+            try
+            {
+                _requestRecheckService.Sender = _currentSettings.NotificationMode != NotificationMode.Disabled ? CreateStatusMessageSender() : null;
+
+                if (_requestStatusMonitor != null)
+                {
+                    await _requestStatusMonitor.StopAsync();
+                    _requestStatusMonitor = null;
+                }
+
+                var statusSettings = _currentSettings.StatusNotifications;
+
+                if (statusSettings != null && statusSettings.Enabled && _currentSettings.NotificationMode != NotificationMode.Disabled)
+                {
+                    _requestStatusMonitor = new RequestStatusMonitor(
+                        statusSettings,
+                        _requestStatusRepository,
+                        _movieNotificationRepository.GetAllMovieNotifications,
+                        _currentSettings.MovieDownloadClient == DownloadClient.Radarr ? _radarrDownloadClient : null,
+                        _tvShowNotificationRepository.GetAllTvShowNotifications,
+                        _currentSettings.TvShowDownloadClient == DownloadClient.Sonarr ? _sonarrDownloadClient : null,
+                        _musicNotificationRepository.GetAllMusicNotifications,
+                        _currentSettings.MusicDownloadClient == DownloadClient.Lidarr ? _lidarrDownloadClient : null,
+                        CreateStatusMessageSender(),
+                        _logger,
+                        () => DateTime.UtcNow);
+
+                    _requestStatusMonitor.Start();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error while starting request status monitor: " + ex.Message);
+            }
+            finally
+            {
+                _requestStatusMonitorLock.Release();
+            }
+        }
+
+        private IStatusMessageSender CreateStatusMessageSender()
+        {
+            return new DiscordStatusMessageSender(_client, _currentSettings.NotificationMode, _currentSettings.NotificationChannels.Select(x => ulong.Parse(x)).ToArray(), _logger);
         }
 
 

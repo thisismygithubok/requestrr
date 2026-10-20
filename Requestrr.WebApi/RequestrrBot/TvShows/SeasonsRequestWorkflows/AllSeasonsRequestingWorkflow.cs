@@ -46,7 +46,7 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows.SeasonsRequestWorkflows
             {
                 await _userInterface.DisplayRequestSuccessForSeasonAsync(tvShow, selectedSeason);
 
-                foreach (var season in tvShow.Seasons.OfType<NormalTvSeason>().Where(x => !x.IsAvailable))
+                foreach (var season in TvSeasonSubscriptions.For(tvShow, selectedSeason))
                 {
                     await _tvShowNotificationWorkflow.NotifyForNewRequestAsync(request.User.UserId, tvShow, season);
                 }

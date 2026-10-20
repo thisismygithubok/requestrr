@@ -76,6 +76,7 @@ export function save(saveModel) {
                 'AutomaticallyNotifyRequesters': saveModel.automaticallyNotifyRequesters,
                 'NotificationMode': saveModel.notificationMode,
                 'NotificationChannels': saveModel.notificationChannels,
+                'StatusNotifications': saveModel.statusNotifications,
                 'AutomaticallyPurgeCommandMessages': saveModel.automaticallyPurgeCommandMessages,
                 'Language': saveModel.language,
             })
@@ -96,6 +97,7 @@ export function save(saveModel) {
                         automaticallyNotifyRequesters: saveModel.automaticallyNotifyRequesters,
                         notificationMode: saveModel.notificationMode,
                         notificationChannels: saveModel.notificationChannels,
+                        statusNotifications: saveModel.statusNotifications,
                         automaticallyPurgeCommandMessages: saveModel.automaticallyPurgeCommandMessages,
                         language: saveModel.language,
                     }));

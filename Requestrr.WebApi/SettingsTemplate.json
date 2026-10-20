@@ -17,7 +17,16 @@
       "AutomaticallyNotifyRequesters": true,
       "NotificationMode": "PrivateMessages",
       "NotificationChannels": [],
-      "AutomaticallyPurgeCommandMessages": true
+      "AutomaticallyPurgeCommandMessages": true,
+      "StatusNotifications": {
+        "Enabled": false,
+        "NoReleaseHours": 24,
+        "DownloadingHours": 12,
+        "StuckHours": 1,
+        "RenotifyEnabled": false,
+        "RenotifyIntervalHours": 24,
+        "RenotifyMaxCount": 3
+      }
     },
     "Language": "english"
   },
@@ -129,5 +138,5 @@
   "Port": 4545,
   "BaseUrl": "",
   "DisableAuthentication": false,
-  "Version": "2.1.3"
+  "Version": "2.1.4"
 }

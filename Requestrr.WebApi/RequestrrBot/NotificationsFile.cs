@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.Notifications.TvShows;
 
 namespace Requestrr.WebApi.RequestrrBot
@@ -127,6 +128,16 @@ namespace Requestrr.WebApi.RequestrrBot
                         }
                     ).ToArray()
                 }).ToArray());
+                _hasChanged = true;
+            }
+        }
+
+
+        public static void WriteStatus(Dictionary<string, StatusSubscription> statusSubscriptions)
+        {
+            lock (_lock)
+            {
+                _cachedNotifications.Status = JToken.FromObject(statusSubscriptions);
                 _hasChanged = true;
             }
         }

@@ -9,6 +9,7 @@ using Requestrr.WebApi.RequestrrBot.DownloadClients.Ombi;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Overseerr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr;
 using Requestrr.WebApi.RequestrrBot.Notifications;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.Notifications.TvShows;
 
 namespace Requestrr.WebApi.RequestrrBot.TvShows
@@ -21,6 +22,7 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
         private OverseerrClient _overseerrClient;
         private OmbiClient _ombiDownloadClient;
         private SonarrClient _sonarrDownloadClient;
+        private readonly RequestRecheckService _recheckService;
 
         public TvShowWorkflowFactory(
             TvShowsSettingsProvider tvShowsSettingsProvider,
@@ -28,8 +30,10 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
             TvShowNotificationsRepository notificationsRepository,
             OverseerrClient overseerrClient,
             OmbiClient ombiDownloadClient,
-            SonarrClient radarrDownloadClient)
+            SonarrClient radarrDownloadClient,
+            RequestRecheckService recheckService)
         {
+            _recheckService = recheckService;
             _tvShowsSettingsProvider = tvShowsSettingsProvider;
             _settingsProvider = settingsProvider;
             _notificationsRepository = notificationsRepository;
@@ -54,7 +58,8 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
                                                 GetTvShowClient<ITvShowRequester>(settings),
                                                 new DiscordTvShowUserInterface(interaction, issueSearcher),
                                                 CreateMovieNotificationWorkflow(interaction, settings, GetTvShowClient<ITvShowSearcher>(settings)),
-                                                _tvShowsSettingsProvider.Provide());
+                                                _tvShowsSettingsProvider.Provide(),
+                                                GetRecheckService(settings));
         }
         
         
@@ -118,6 +123,11 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
             }
 
             return movieNotificationWorkflow;
+        }
+
+        private RequestRecheckService GetRecheckService(DiscordSettings settings)
+        {
+            return settings.TvShowDownloadClient == DownloadClient.Sonarr && settings.NotificationMode != NotificationMode.Disabled ? _recheckService : null;
         }
 
         private T GetTvShowClient<T>(DiscordSettings settings) where T : class

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.Notifications.Movies
 {
@@ -32,9 +33,12 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Movies
         private HashSet<Notification> _notifications = new HashSet<Notification>();
 
         private object _lock = new object();
+        private readonly RequestStatusRepository _statusRepository;
 
-        public MovieNotificationsRepository()
+        public MovieNotificationsRepository(RequestStatusRepository statusRepository)
         {
+            _statusRepository = statusRepository;
+
             foreach (var notif in NotificationsFile.Read().Movies)
             {
                 foreach (var movieId in notif.MovieIds)
@@ -50,6 +54,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Movies
             {
                 if (_notifications.Add(new Notification(userId, movieId)))
                 {
+                    _statusRepository.Start(RequestStatusKeys.Movie(userId, movieId), DateTime.UtcNow);
                     NotificationsFile.WriteMovies(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n.MovieId).ToArray()));
                 }
             }
@@ -61,6 +66,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.Movies
             {
                 if (_notifications.Remove(new Notification(userId, movieId)))
                 {
+                    _statusRepository.Remove(RequestStatusKeys.Movie(userId, movieId));
                     NotificationsFile.WriteMovies(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n.MovieId).ToArray()));
                 }
             }

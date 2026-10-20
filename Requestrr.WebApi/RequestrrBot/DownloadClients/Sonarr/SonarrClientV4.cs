@@ -9,12 +9,13 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Requestrr.WebApi.Extensions;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 using static Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr.SonarrClient;
 
 namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
 {
-    public class SonarrClientV4 : ITvShowSearcher, ITvShowRequester
+    public class SonarrClientV4 : ITvShowSearcher, ITvShowRequester, ITvShowStatusProvider
     {
         private IHttpClientFactory _httpClientFactory;
         private readonly ILogger<SonarrClient> _logger;
@@ -457,6 +458,11 @@ namespace Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr
                     }
                 }));
             }
+        }
+
+        public Task<ArrItemStatus> GetSeasonStatusAsync(int theTvDbId, int seasonNumber, CancellationToken token)
+        {
+            return SonarrClient.FetchSeasonStatusAsync(HttpGetAsync, BaseURL, theTvDbId, seasonNumber);
         }
 
         private async Task<JSONTvShow> FindSeriesInSonarrAsync(int tvDbId)

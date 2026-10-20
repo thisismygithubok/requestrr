@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System.Linq;
 using Requestrr.WebApi.RequestrrBot.TvShows;
 
@@ -9,8 +11,17 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
         private HashSet<TvShowNotification> _notifications = new HashSet<TvShowNotification>();
 
         private object _lock = new object();
+        private readonly RequestStatusRepository _statusRepository;
+        private readonly Action<Dictionary<string, TvShowNotification[]>> _write;
 
-        public TvShowNotificationsRepository()
+        public TvShowNotificationsRepository(RequestStatusRepository statusRepository, Action<Dictionary<string, TvShowNotification[]>> write)
+        {
+            _statusRepository = statusRepository;
+            _write = write;
+        }
+
+        public TvShowNotificationsRepository(RequestStatusRepository statusRepository)
+            : this(statusRepository, NotificationsFile.WriteTvShows)
         {
             foreach (var userNotif in NotificationsFile.Read().TvShows)
             {
@@ -44,9 +55,15 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
             {
                 if (tvSeason is FutureTvSeasons)
                 {
-                    _notifications.Remove(new FutureSeasonsNotification(userId, tvShowId));
+                    if (_notifications.TryGetValue(new FutureSeasonsNotification(userId, tvShowId), out var previous))
+                    {
+                        _notifications.Remove(previous);
+                        _statusRepository.Remove(RequestStatusKeys.TvSeason(userId, tvShowId, previous.SeasonNumber));
+                    }
+
                     if (_notifications.Add(new FutureSeasonsNotification(userId, tvShowId, tvSeason.SeasonNumber)))
                     {
+                        _statusRepository.Start(RequestStatusKeys.TvSeason(userId, tvShowId, tvSeason.SeasonNumber), DateTime.UtcNow);
                         WriteTvShowsNotifications();
                     }
                 }
@@ -54,6 +71,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
                 {
                     if (_notifications.Add(new SeasonNotification(userId, tvShowId, tvSeason.SeasonNumber)))
                     {
+                        _statusRepository.Start(RequestStatusKeys.TvSeason(userId, tvShowId, tvSeason.SeasonNumber), DateTime.UtcNow);
                         WriteTvShowsNotifications();
                     }
                 }
@@ -66,6 +84,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
             {
                 if (_notifications.Remove(notification))
                 {
+                    _statusRepository.Remove(RequestStatusKeys.TvSeason(notification.UserId, notification.TvShowId, notification.SeasonNumber));
                     WriteTvShowsNotifications();
                 }
             }
@@ -88,7 +107,7 @@ namespace Requestrr.WebApi.RequestrrBot.Notifications.TvShows
 
         private void WriteTvShowsNotifications()
         {
-            NotificationsFile.WriteTvShows(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n).ToArray()));
+            _write(_notifications.GroupBy(x => x.UserId).ToDictionary(x => x.Key, x => x.Select(n => n).ToArray()));
         }
     }
 }
