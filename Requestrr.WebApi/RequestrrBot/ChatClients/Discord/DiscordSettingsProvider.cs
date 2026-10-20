@@ -8,6 +8,7 @@ using Requestrr.WebApi.RequestrrBot.DownloadClients.Overseerr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr;
 using Requestrr.WebApi.RequestrrBot.Extensions;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
 {
@@ -37,6 +38,7 @@ namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
                 NotificationMode = settings.ChatClients.Discord.NotificationMode,
                 NotificationChannels = settings.ChatClients.Discord.NotificationChannels.ToObject<string[]>(),
                 AutomaticallyPurgeCommandMessages = settings.ChatClients.Discord.AutomaticallyPurgeCommandMessages,
+                StatusNotifications = settings.ChatClients.Discord.StatusNotifications.ToObject<StatusNotificationSettings>(),
             };
         }
 

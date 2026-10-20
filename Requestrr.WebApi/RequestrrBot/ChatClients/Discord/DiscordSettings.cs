@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
 {
@@ -23,6 +24,7 @@ namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
         public string NotificationMode { get; set; }
         public string[] NotificationChannels { get; set; }
         public bool AutomaticallyPurgeCommandMessages { get; set; }
+        public StatusNotificationSettings StatusNotifications { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -44,7 +46,8 @@ namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
                    AutomaticallyNotifyRequesters == settings.AutomaticallyNotifyRequesters &&
                    NotificationMode == settings.NotificationMode &&
                    NotificationChannels.SequenceEqual(settings.NotificationChannels) &&
-                   AutomaticallyPurgeCommandMessages == settings.AutomaticallyPurgeCommandMessages;
+                   AutomaticallyPurgeCommandMessages == settings.AutomaticallyPurgeCommandMessages &&
+                   Equals(StatusNotifications, settings.StatusNotifications);
         }
 
         public override int GetHashCode()
@@ -68,6 +71,7 @@ namespace Requestrr.WebApi.RequestrrBot.ChatClients.Discord
             hash.Add(NotificationMode);
             hash.Add(NotificationChannels);
             hash.Add(AutomaticallyPurgeCommandMessages);
+            hash.Add(StatusNotifications);
             return hash.ToHashCode();
         }
     }

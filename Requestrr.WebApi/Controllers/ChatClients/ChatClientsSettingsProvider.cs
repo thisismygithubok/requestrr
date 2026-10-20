@@ -1,5 +1,6 @@
 ﻿using Requestrr.WebApi.config;
 using Requestrr.WebApi.RequestrrBot;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.Controllers.ChatClients
 {
@@ -23,6 +24,7 @@ namespace Requestrr.WebApi.Controllers.ChatClients
                 NotificationMode = (string)settings.ChatClients.Discord.NotificationMode,
                 NotificationChannels = settings.ChatClients.Discord.NotificationChannels.ToObject<string[]>(),
                 AutomaticallyPurgeCommandMessages = (bool)settings.ChatClients.Discord.AutomaticallyPurgeCommandMessages,
+                StatusNotifications = settings.ChatClients.Discord.StatusNotifications.ToObject<StatusNotificationSettings>(),
             };
 
             return new ChatClientsSettings

@@ -44,6 +44,7 @@ namespace Requestrr.WebApi.Controllers.ChatClients
                 NotificationMode = _chatClientsSettings.Discord.NotificationMode,
                 NotificationChannels = _chatClientsSettings.Discord.NotificationChannels ?? Array.Empty<string>(),
                 AutomaticallyPurgeCommandMessages = _chatClientsSettings.Discord.AutomaticallyPurgeCommandMessages,
+                StatusNotifications = _chatClientsSettings.Discord.StatusNotifications,
                 Language = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_chatClientsSettings.Language.ToLower()),
                 AvailableLanguages = GetLanguages()
             });
@@ -149,6 +150,12 @@ namespace Requestrr.WebApi.Controllers.ChatClients
                 return BadRequest("Invalid monitored channels channels, please make sure to enter the monitored channel ids.");
             }
 
+            var statusNotificationsError = model.StatusNotifications?.Validate();
+            if (statusNotificationsError != null)
+            {
+                return BadRequest(statusNotificationsError);
+            }
+
             _chatClientsSettings.Discord.BotToken = model.BotToken.Trim();
             _chatClientsSettings.Discord.ClientId = model.ClientId;
             _chatClientsSettings.Discord.StatusMessage = model.StatusMessage.Trim();
@@ -162,6 +169,7 @@ namespace Requestrr.WebApi.Controllers.ChatClients
             _chatClientsSettings.Discord.NotificationMode = model.NotificationMode;
             _chatClientsSettings.Discord.NotificationChannels = (model.NotificationChannels ?? Array.Empty<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray(); ;
             _chatClientsSettings.Discord.AutomaticallyPurgeCommandMessages = model.AutomaticallyPurgeCommandMessages;
+            _chatClientsSettings.Discord.StatusNotifications = model.StatusNotifications ?? _chatClientsSettings.Discord.StatusNotifications;
             _chatClientsSettings.Language = model.Language;
 
             _botClientsSettings.Client = model.Client;

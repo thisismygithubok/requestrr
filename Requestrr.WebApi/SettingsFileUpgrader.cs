@@ -8,6 +8,7 @@ using Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Overseerr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Sonarr;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi
 {
@@ -296,6 +297,14 @@ namespace Requestrr.WebApi
                 ((JObject)settingsJson["DownloadClients"]).Add("Lidarr", JToken.FromObject(lidarrBlankSettings));
                 ((JObject)settingsJson).Add("Music", JToken.FromObject(musicClient));
                 ((JObject)settingsJson.ChatClients.Discord).Add("MusicRoles", JToken.FromObject(new List<string>()));
+                File.WriteAllText(settingsFilePath, JsonConvert.SerializeObject(settingsJson));
+            }
+
+            if (settingsJson.Version.ToString().Equals("2.1.3", StringComparison.InvariantCultureIgnoreCase))
+            {
+                settingsJson.Version = "2.1.4";
+
+                ((JObject)settingsJson.ChatClients.Discord).Add("StatusNotifications", JToken.FromObject(new StatusNotificationSettings()));
                 File.WriteAllText(settingsFilePath, JsonConvert.SerializeObject(settingsJson));
             }
         }

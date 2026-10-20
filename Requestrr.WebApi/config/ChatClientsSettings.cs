@@ -1,3 +1,5 @@
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
+
 namespace Requestrr.WebApi.config
 {
     public class ChatClientsSettings
@@ -20,5 +22,6 @@ namespace Requestrr.WebApi.config
         public string NotificationMode { get; set; }
         public string[] NotificationChannels { get; set; }
         public bool AutomaticallyPurgeCommandMessages { get; set; }
+        public StatusNotificationSettings StatusNotifications { get; set; }
     }
 }
