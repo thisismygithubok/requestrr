@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using Requestrr.WebApi.RequestrrBot.TvShows.SeasonsRequestWorkflows;
 
 namespace Requestrr.WebApi.RequestrrBot.TvShows
@@ -15,6 +16,7 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
         private readonly ITvShowUserInterface _userInterface;
         private readonly ITvShowNotificationWorkflow _tvShowNotificationWorkflow;
         private readonly TvShowsSettings _settings;
+        private readonly RequestRecheckService _recheckService;
 
         public TvShowRequestingWorkflow(
             TvShowUserRequester user,
@@ -23,7 +25,8 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
             ITvShowRequester requester,
             ITvShowUserInterface userInterface,
             ITvShowNotificationWorkflow tvShowNotificationWorkflow,
-            TvShowsSettings settings)
+            TvShowsSettings settings,
+            RequestRecheckService recheckService)
         {
             _user = user;
             _categoryId = categoryId;
@@ -32,6 +35,7 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
             _userInterface = userInterface;
             _tvShowNotificationWorkflow = tvShowNotificationWorkflow;
             _settings = settings;
+            _recheckService = recheckService;
         }
 
         public async Task SearchTvShowAsync(string tvShowName)
@@ -178,7 +182,35 @@ namespace Requestrr.WebApi.RequestrrBot.TvShows
         {
             var tvShow = await GetTvShowAsync(tvDbId);
             var selectedSeason = tvShow.Seasons.Single(x => x.SeasonNumber == seasonNumber);
+            var attemptedAt = DateTime.UtcNow;
 
+            try
+            {
+                await RequestSelectedSeasonAsync(tvShow, selectedSeason);
+            }
+            catch
+            {
+                _recheckService?.Schedule(new RecheckRequest
+                {
+                    UserId = _user.UserId,
+                    Title = tvShow.Title,
+                    StatusKey = RequestStatusKeys.TvSeason(_user.UserId, tvDbId, seasonNumber),
+                    AttemptedAtUtc = attemptedAt,
+                    ExistsAsync = async () =>
+                    {
+                        var refreshedTvShow = await _searcher.GetTvShowDetailsAsync(new TvShowRequest(_user, _categoryId), tvDbId);
+
+                        return !string.IsNullOrEmpty(refreshedTvShow.DownloadClientId)
+                            && (!(selectedSeason is NormalTvSeason) || refreshedTvShow.Seasons.Any(x => x.SeasonNumber == seasonNumber && x.IsRequested != RequestedState.None));
+                    },
+                    SubscribeAsync = () => _tvShowNotificationWorkflow.NotifyForNewRequestAsync(_user.UserId, tvShow, selectedSeason),
+                });
+                throw;
+            }
+        }
+
+        private async Task RequestSelectedSeasonAsync(TvShow tvShow, TvSeason selectedSeason)
+        {
             switch (selectedSeason)
             {
                 case FutureTvSeasons futureTvSeasons:

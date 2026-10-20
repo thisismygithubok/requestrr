@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.Music
 {
@@ -13,6 +14,7 @@ namespace Requestrr.WebApi.RequestrrBot.Music
         private readonly IMusicRequester _requester;
         private readonly IMusicUserInterface _userInterface;
         private readonly IMusicNotificationWorkflow _notificationWorkflow;
+        private readonly RequestRecheckService _recheckService;
 
 
         public MusicRequestingWorkflow(
@@ -21,7 +23,8 @@ namespace Requestrr.WebApi.RequestrrBot.Music
             IMusicSearcher searcher,
             IMusicRequester requester,
             IMusicUserInterface userInterface,
-            IMusicNotificationWorkflow notificationWorkflow
+            IMusicNotificationWorkflow notificationWorkflow,
+            RequestRecheckService recheckService
         )
         {
             _categoryId = categoryId;
@@ -30,6 +33,7 @@ namespace Requestrr.WebApi.RequestrrBot.Music
             _requester = requester;
             _userInterface = userInterface;
             _notificationWorkflow = notificationWorkflow;
+            _recheckService = recheckService;
         }
 
 
@@ -101,7 +105,26 @@ namespace Requestrr.WebApi.RequestrrBot.Music
         public async Task RequestMusicArtistAsync(string artistId)
         {
             MusicArtist musicArtist = await _musicSearcher.SearchMusicForArtistIdAsync(new MusicRequest(_user, _categoryId), artistId);
-            MusicRequestResult result = await _requester.RequestMusicAsync(new MusicRequest(_user, _categoryId), musicArtist);
+            DateTime attemptedAt = DateTime.UtcNow;
+            MusicRequestResult result;
+
+            try
+            {
+                result = await _requester.RequestMusicAsync(new MusicRequest(_user, _categoryId), musicArtist);
+            }
+            catch
+            {
+                _recheckService?.Schedule(new RecheckRequest
+                {
+                    UserId = _user.UserId,
+                    Title = musicArtist.ArtistName,
+                    StatusKey = RequestStatusKeys.Music(_user.UserId, musicArtist.ArtistId),
+                    AttemptedAtUtc = attemptedAt,
+                    ExistsAsync = async () => !string.IsNullOrEmpty((await _musicSearcher.SearchMusicForArtistIdAsync(new MusicRequest(_user, _categoryId), artistId)).DownloadClientId),
+                    SubscribeAsync = () => _notificationWorkflow.NotifyForNewRequestAsync(_user.UserId, musicArtist),
+                });
+                throw;
+            }
 
             if (result.WasDenied)
             {

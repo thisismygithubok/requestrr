@@ -6,6 +6,7 @@ using Requestrr.WebApi.RequestrrBot.DownloadClients;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Lidarr;
 using Requestrr.WebApi.RequestrrBot.Notifications;
 using Requestrr.WebApi.RequestrrBot.Notifications.Music;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 using System;
 using System.Linq;
 
@@ -16,14 +17,17 @@ namespace Requestrr.WebApi.RequestrrBot.Music
         private readonly DiscordSettingsProvider _settingsProvider;
         private readonly MusicNotificationsRepository _notificationsRepository;
         private LidarrClient _lidarrClient;
+        private readonly RequestRecheckService _recheckService;
 
 
         public MusicWorkflowFactory(
             DiscordSettingsProvider settingsProvider,
             MusicNotificationsRepository musicNotificationsRepository,
-            LidarrClient lidarrClient
+            LidarrClient lidarrClient,
+            RequestRecheckService recheckService
         )
         {
+            _recheckService = recheckService;
             _settingsProvider = settingsProvider;
             _notificationsRepository = musicNotificationsRepository;
             _lidarrClient = lidarrClient;
@@ -42,7 +46,8 @@ namespace Requestrr.WebApi.RequestrrBot.Music
                 GetMusicClient<IMusicSearcher>(settings),
                 GetMusicClient<IMusicRequester>(settings),
                 new DiscordMusicUserInterface(interaction, GetMusicClient<IMusicSearcher>(settings)),
-                CreateMusicNotificationWorkflow(interaction, settings)
+                CreateMusicNotificationWorkflow(interaction, settings),
+                GetRecheckService(settings)
                 );
         }
 
@@ -84,6 +89,11 @@ namespace Requestrr.WebApi.RequestrrBot.Music
         }
 
 
+
+        private RequestRecheckService GetRecheckService(DiscordSettings settings)
+        {
+            return settings.MusicDownloadClient == DownloadClient.Lidarr && settings.NotificationMode != NotificationMode.Disabled ? _recheckService : null;
+        }
 
         private T GetMusicClient<T>(DiscordSettings settings) where T : class
         {

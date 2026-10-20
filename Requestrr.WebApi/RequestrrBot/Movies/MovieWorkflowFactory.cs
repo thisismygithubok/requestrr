@@ -11,6 +11,7 @@ using Requestrr.WebApi.RequestrrBot.DownloadClients.Overseerr;
 using Requestrr.WebApi.RequestrrBot.DownloadClients.Radarr;
 using Requestrr.WebApi.RequestrrBot.Notifications;
 using Requestrr.WebApi.RequestrrBot.Notifications.Movies;
+using Requestrr.WebApi.RequestrrBot.Notifications.Status;
 
 namespace Requestrr.WebApi.RequestrrBot.Movies
 {
@@ -21,19 +22,22 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
         private OverseerrClient _overseerrClient;
         private OmbiClient _ombiDownloadClient;
         private RadarrClient _radarrDownloadClient;
+        private readonly RequestRecheckService _recheckService;
 
         public MovieWorkflowFactory(
             DiscordSettingsProvider settingsProvider,
             MovieNotificationsRepository notificationsRepository,
             OverseerrClient overseerrClient,
             OmbiClient ombiDownloadClient,
-            RadarrClient radarrDownloadClient)
+            RadarrClient radarrDownloadClient,
+            RequestRecheckService recheckService)
         {
             _settingsProvider = settingsProvider;
             _notificationsRepository = notificationsRepository;
             _overseerrClient = overseerrClient;
             _ombiDownloadClient = ombiDownloadClient;
             _radarrDownloadClient = radarrDownloadClient;
+            _recheckService = recheckService;
         }
 
         public MovieRequestingWorkflow CreateRequestingWorkflow(DiscordInteraction interaction, int categoryId)
@@ -45,7 +49,8 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
                                                 GetMovieClient<IMovieSearcher>(settings),
                                                 GetMovieClient<IMovieRequester>(settings),
                                                 new DiscordMovieUserInterface(interaction, GetMovieClient<IMovieSearcher>(settings)),
-                                                CreateMovieNotificationWorkflow(interaction, settings));
+                                                CreateMovieNotificationWorkflow(interaction, settings),
+                                                GetRecheckService(settings));
         }
 
 
@@ -106,6 +111,11 @@ namespace Requestrr.WebApi.RequestrrBot.Movies
             }
 
             return movieNotificationWorkflow;
+        }
+
+        private RequestRecheckService GetRecheckService(DiscordSettings settings)
+        {
+            return settings.MovieDownloadClient == DownloadClient.Radarr && settings.NotificationMode != NotificationMode.Disabled ? _recheckService : null;
         }
 
         private T GetMovieClient<T>(DiscordSettings settings) where T : class
